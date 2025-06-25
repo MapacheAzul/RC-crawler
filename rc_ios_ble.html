@@ -1,0 +1,80 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RC BLE iOS Control</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #0d1117;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    button {
+      font-size: 1.2rem;
+      padding: 10px 20px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      background-color: #1f6feb;
+      color: white;
+    }
+    .log {
+      margin-top: 20px;
+      background: #161b22;
+      padding: 10px;
+      border-radius: 10px;
+      height: 120px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Control RC vía BLE (iOS)</h1>
+  <button onclick="conectar()">🔗 Conectar</button>
+  <button onclick="enviar('90,90')">Neutro</button>
+  <button onclick="enviar('120,90')">Acelerar</button>
+  <button onclick="enviar('60,90')">Reversa</button>
+  <button onclick="enviar('90,60')">Izquierda</button>
+  <button onclick="enviar('90,120')">Derecha</button>
+  <div class="log" id="log">Esperando conexión...</div>
+
+  <script>
+    let device, characteristic;
+    function log(msg) {
+      const logEl = document.getElementById("log");
+      logEl.innerHTML += msg + "<br/>";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function conectar() {
+      try {
+        device = await navigator.bluetooth.requestDevice({
+          filters: [{ name: "DENNIS-RC" }],
+          optionalServices: ["0000ffe0-0000-1000-8000-00805f9b34fb"]
+        });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
+        characteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
+        log("✅ Conectado a ESP32");
+      } catch (error) {
+        log("❌ Error de conexión: " + error);
+      }
+    }
+
+    function enviar(comando) {
+      if (!characteristic) {
+        log("⛔ No conectado");
+        return;
+      }
+      const data = new TextEncoder().encode(comando + "\n");
+      characteristic.writeValue(data).then(() => {
+        log("📤 Enviado: " + comando);
+      });
+    }
+  </script>
+</body>
+</html>
