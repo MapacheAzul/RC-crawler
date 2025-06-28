@@ -80,8 +80,6 @@
     .gear-3 { background-color: #6c5ce7; }
     .gear-4 { background-color: #fdcb6e; }
     .gear-5 { background-color: #d63031; }
-
-    /* Visual del gatillo */
     #gatillo {
       position: absolute;
       right: 30px;
@@ -94,7 +92,6 @@
       border-radius: 10px;
       overflow: hidden;
     }
-
     #gatillo-fill {
       width: 100%;
       height: 50%;
@@ -116,11 +113,9 @@
     <div></div>
     <div class="arrow" id="arrow-up">⬆️</div>
     <div></div>
-
     <div class="arrow" id="arrow-left">⬅️</div>
     <div class="arrow" id="center-btn">🎯</div>
     <div class="arrow" id="arrow-right">➡️</div>
-
     <div></div>
     <div class="arrow" id="arrow-down">🔽️</div>
     <div></div>
@@ -135,11 +130,9 @@
     let potenciaActual = 0.0;
     let potenciaSuavizada = 0.0;
     let ultimoMovimiento = Date.now();
-
     let marchaActual = 1;
     const potenciaMaximaPorMarcha = [0.25, 0.35, 0.6, 0.75, 1.0];
     const marchaSpan = document.getElementById('marcha');
-
     const REFRESCO = 20;
     const SENSIBILIDAD_X = 0.4;
     const SENSIBILIDAD_Y = 0.1;
@@ -153,7 +146,6 @@
     const angleDisplay = document.getElementById('angulo');
     const speedDisplay = document.getElementById('velocidad');
     const gatilloFill = document.getElementById('gatillo-fill');
-
     const connectBtn = document.getElementById('connectBtn');
     const centerBtn = document.getElementById('center-btn');
     const arrowLeft = document.getElementById('arrow-left');
@@ -165,11 +157,9 @@
       try {
         puerto = await navigator.serial.requestPort();
         await puerto.open({ baudRate: 115200 });
-
         const encoder = new TextEncoderStream();
         encoder.readable.pipeTo(puerto.writable);
         writer = encoder.writable.getWriter();
-
         status.textContent = '✅ Conectado';
         status.classList.add('connected');
       } catch (err) {
@@ -192,32 +182,24 @@
 
     document.addEventListener('mousemove', (event) => {
       if (!controlActivo) return;
-
       const deltaX = event.movementX;
       const deltaY = event.movementY;
       const movimientoReal = Math.abs(deltaX) + Math.abs(deltaY);
-
       if (movimientoReal > UMBRAL_MOVIMIENTO) {
         direccionActual += deltaX * SENSIBILIDAD_X;
         direccionActual = Math.max(Math.min(direccionActual, LIMITE_GRADOS), -LIMITE_GRADOS);
-
         if (Math.abs(deltaY) > 0.5) {
           potenciaActual -= deltaY * SENSIBILIDAD_Y;
           potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
         }
-
         ultimoMovimiento = Date.now();
       }
     });
 
     document.addEventListener('mousedown', (event) => {
       if (!controlActivo) return;
-
-      if (event.button === 0) {
-        marchaActual = Math.min(marchaActual + 1, 5);
-      } else if (event.button === 2) {
-        marchaActual = Math.max(marchaActual - 1, 1);
-      }
+      if (event.button === 0) marchaActual = Math.min(marchaActual + 1, 5);
+      else if (event.button === 2) marchaActual = Math.max(marchaActual - 1, 1);
       marchaSpan.textContent = marchaActual;
       marchaSpan.className = `gear-indicator gear-${marchaActual}`;
     });
@@ -228,17 +210,15 @@
       if (!writer) return;
       const dirServo = Math.round((Math.max(Math.min(dir, LIMITE_GRADOS), -LIMITE_GRADOS) + 45) * 2);
       const potVal = Math.round(Math.max(Math.min(pot, LIMITE_POTENCIA), -LIMITE_POTENCIA));
-      const comando = `${potVal},${dirServo}\r\n`;
+      const comando = `${potVal},${dirServo}
+`;
       writer.write(comando);
-
       angleDisplay.textContent = dir.toFixed(1);
       speedDisplay.textContent = pot.toFixed(1);
-
       arrowLeft.classList.toggle('active', dir < -5);
       arrowRight.classList.toggle('active', dir > 5);
       arrowUp.classList.toggle('active', pot > 5);
       arrowDown.classList.toggle('active', pot < -5);
-
       const fill = Math.abs(pot) / LIMITE_POTENCIA;
       gatilloFill.style.height = `${fill * 100}%`;
     }
@@ -247,7 +227,6 @@
       if (!controlActivo || !writer) return;
       const ahora = Date.now();
       const tiempoSinMovimiento = ahora - ultimoMovimiento;
-
       if (tiempoSinMovimiento > TIEMPO_RECALIBRAR) {
         direccionActual = 0.0;
         potenciaActual = 0.0;
@@ -261,10 +240,8 @@
           potenciaSuavizada += (potenciaActual - potenciaSuavizada) * velocidadSuavizado;
         }
       }
-
       const factor = potenciaMaximaPorMarcha[marchaActual - 1];
       const potenciaLimitada = potenciaSuavizada * factor;
-
       enviarComando(potenciaLimitada, direccionActual);
     }, REFRESCO);
   </script>
