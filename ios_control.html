@@ -1,0 +1,142 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Control RC (BLE iOS)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: white;
+      text-align: center;
+      padding-top: 50px;
+    }
+    .status {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+    .connected {
+      color: #00ffae;
+    }
+    .gear-display, .angle-display {
+      font-size: 1.4em;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    #connectBtn, #center-btn {
+      margin-top: 20px;
+      font-size: 1.3em;
+      padding: 12px 28px;
+      background: linear-gradient(to right, #00ffae, #0077ff);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      color: #003f5c;
+      font-weight: bold;
+    }
+    .gear-indicator {
+      padding: 6px 16px;
+      border-radius: 10px;
+      font-size: 1.4em;
+    }
+    .gear-1 { background-color: #00b894; }
+    .gear-2 { background-color: #0984e3; }
+    .gear-3 { background-color: #6c5ce7; }
+    .gear-4 { background-color: #fdcb6e; }
+    .gear-5 { background-color: #d63031; }
+  </style>
+</head>
+<body>
+  <div class="status" id="status">🔄 Conectando por Bluetooth BLE...</div>
+  <div class="gear-display">
+    Marcha: <span id="marcha" class="gear-indicator gear-1">1</span>
+  </div>
+  <div class="angle-display">Ángulo: <span id="angulo">0</span>°</div>
+  <div class="angle-display">Potencia: <span id="velocidad">0</span></div>
+
+  <button id="connectBtn">Conectar BLE</button>
+  <button id="center-btn">🎯 Activar Control</button>
+
+  <script>
+    let characteristic;
+    let direccionActual = 0;
+    let potenciaActual = 0;
+    let marchaActual = 1;
+    let controlActivo = false;
+
+    const status = document.getElementById('status');
+    const angleDisplay = document.getElementById('angulo');
+    const speedDisplay = document.getElementById('velocidad');
+    const marchaSpan = document.getElementById('marcha');
+
+    const serviceUUID = '00001234-0000-1000-8000-00805f9b34fb';
+    const characteristicUUID = '00005678-0000-1000-8000-00805f9b34fb';
+
+    document.getElementById('connectBtn').addEventListener('click', async () => {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ services: [serviceUUID] }]
+        });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(serviceUUID);
+        characteristic = await service.getCharacteristic(characteristicUUID);
+
+        status.textContent = '✅ Conectado por BLE';
+        status.classList.add('connected');
+      } catch (error) {
+        status.textContent = '❌ Error de conexión';
+        console.error(error);
+      }
+    });
+
+    document.getElementById('center-btn').addEventListener('click', () => {
+      controlActivo = true;
+    });
+
+    function enviarComando() {
+      if (!characteristic) return;
+      const dir = Math.max(-45, Math.min(45, direccionActual));
+      const pot = Math.max(-90, Math.min(90, potenciaActual));
+      const comando = `${pot.toFixed(0)},${Math.round((dir + 45) * 2)}
+`;
+      const encoder = new TextEncoder();
+      characteristic.writeValue(encoder.encode(comando));
+
+      angleDisplay.textContent = dir;
+      speedDisplay.textContent = pot;
+    }
+
+    let touchStartX = 0, touchStartY = 0;
+    document.body.addEventListener('touchstart', (e) => {
+      if (!controlActivo) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+
+    document.body.addEventListener('touchend', (e) => {
+      if (!controlActivo) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 30) direccionActual += 5;
+        else if (dx < -30) direccionActual -= 5;
+      } else {
+        if (dy < -30) potenciaActual += 5;
+        else if (dy > 30) potenciaActual -= 5;
+      }
+
+      enviarComando();
+    });
+
+    document.body.addEventListener('contextmenu', e => e.preventDefault());
+    document.body.addEventListener('dblclick', () => {
+      marchaActual = (marchaActual % 5) + 1;
+      marchaSpan.textContent = marchaActual;
+      marchaSpan.className = `gear-indicator gear-${marchaActual}`;
+    });
+  </script>
+</body>
+</html>
