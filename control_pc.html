@@ -3,8 +3,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Control RC (BLE iOS)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📱 Control RC</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -12,6 +11,7 @@
       color: white;
       text-align: center;
       padding-top: 50px;
+      overflow: hidden;
     }
     .status {
       font-size: 1.5em;
@@ -20,13 +20,39 @@
     .connected {
       color: #00ffae;
     }
-    .gear-display, .angle-display {
+    .angle-display, .gear-display {
       font-size: 1.4em;
       margin-bottom: 12px;
       font-weight: 600;
     }
-    #connectBtn, #center-btn {
-      margin-top: 20px;
+    .arrow-grid {
+      display: grid;
+      grid-template-columns: 80px 80px 80px;
+      grid-gap: 20px;
+      justify-content: center;
+      align-items: center;
+      margin-top: 40px;
+    }
+    .arrow {
+      font-size: 2.2em;
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 2px solid white;
+      border-radius: 14px;
+      padding: 12px;
+      cursor: pointer;
+      transition: background 0.25s, transform 0.25s, border 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    }
+    .arrow:hover {
+      background-color: rgba(255, 255, 255, 0.3);
+    }
+    .arrow.active {
+      transform: scale(1.2);
+      border: 3px solid;
+      border-image: linear-gradient(45deg, #00f2fe, #4facfe) 1;
+    }
+    #connectBtn {
+      margin-top: 30px;
       font-size: 1.3em;
       padding: 12px 28px;
       background: linear-gradient(to right, #00ffae, #0077ff);
@@ -35,108 +61,212 @@
       cursor: pointer;
       color: #003f5c;
       font-weight: bold;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #connectBtn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     .gear-indicator {
+      font-size: 1.5em;
+      font-weight: bold;
       padding: 6px 16px;
+      display: inline-block;
       border-radius: 10px;
-      font-size: 1.4em;
+      transition: background-color 0.3s;
     }
     .gear-1 { background-color: #00b894; }
     .gear-2 { background-color: #0984e3; }
     .gear-3 { background-color: #6c5ce7; }
     .gear-4 { background-color: #fdcb6e; }
     .gear-5 { background-color: #d63031; }
+
+    /* Visual del gatillo */
+    #gatillo {
+      position: absolute;
+      right: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 300px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    #gatillo-fill {
+      width: 100%;
+      height: 50%;
+      background: linear-gradient(to top, #00ffae, #0077ff);
+      transform-origin: bottom;
+      transition: height 0.1s ease-out;
+    }
   </style>
 </head>
 <body>
-  <div class="status" id="status">🔄 Conectando por Bluetooth BLE...</div>
+  <div class="status" id="status">🔄 Conectando por Bluetooth...</div>
   <div class="gear-display">
     Marcha: <span id="marcha" class="gear-indicator gear-1">1</span>
   </div>
-  <div class="angle-display">Ángulo: <span id="angulo">0</span>°</div>
+  <div class="angle-display">Ángulo de dirección: <span id="angulo">0.0</span>°</div>
   <div class="angle-display">Potencia: <span id="velocidad">0</span></div>
 
-  <button id="connectBtn">Conectar BLE</button>
-  <button id="center-btn">🎯 Activar Control</button>
+  <div class="arrow-grid">
+    <div></div>
+    <div class="arrow" id="arrow-up">⬆️</div>
+    <div></div>
+
+    <div class="arrow" id="arrow-left">⬅️</div>
+    <div class="arrow" id="center-btn">🎯</div>
+    <div class="arrow" id="arrow-right">➡️</div>
+
+    <div></div>
+    <div class="arrow" id="arrow-down">🔽️</div>
+    <div></div>
+  </div>
+
+  <button id="connectBtn">Conectar por Bluetooth</button>
+  <div id="gatillo"><div id="gatillo-fill"></div></div>
 
   <script>
-    let characteristic;
-    let direccionActual = 0;
-    let potenciaActual = 0;
+    let puerto, writer;
+    let direccionActual = 0.0;
+    let potenciaActual = 0.0;
+    let potenciaSuavizada = 0.0;
+    let ultimoMovimiento = Date.now();
+
     let marchaActual = 1;
+    const potenciaMaximaPorMarcha = [0.25, 0.35, 0.6, 0.75, 1.0];
+    const marchaSpan = document.getElementById('marcha');
+
+    const REFRESCO = 20;
+    const SENSIBILIDAD_X = 0.4;
+    const SENSIBILIDAD_Y = 0.1;
+    const LIMITE_GRADOS = 45;
+    const LIMITE_POTENCIA = 90;
+    const TIEMPO_RECALIBRAR = 400;
+    const UMBRAL_MOVIMIENTO = 0.3;
     let controlActivo = false;
 
     const status = document.getElementById('status');
     const angleDisplay = document.getElementById('angulo');
     const speedDisplay = document.getElementById('velocidad');
-    const marchaSpan = document.getElementById('marcha');
+    const gatilloFill = document.getElementById('gatillo-fill');
 
-    const serviceUUID = '00001234-0000-1000-8000-00805f9b34fb';
-    const characteristicUUID = '00005678-0000-1000-8000-00805f9b34fb';
+    const connectBtn = document.getElementById('connectBtn');
+    const centerBtn = document.getElementById('center-btn');
+    const arrowLeft = document.getElementById('arrow-left');
+    const arrowRight = document.getElementById('arrow-right');
+    const arrowUp = document.getElementById('arrow-up');
+    const arrowDown = document.getElementById('arrow-down');
 
-    document.getElementById('connectBtn').addEventListener('click', async () => {
+    connectBtn.addEventListener('click', async () => {
       try {
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: [serviceUUID] }]
-        });
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(serviceUUID);
-        characteristic = await service.getCharacteristic(characteristicUUID);
+        puerto = await navigator.serial.requestPort();
+        await puerto.open({ baudRate: 115200 });
 
-        status.textContent = '✅ Conectado por BLE';
+        const encoder = new TextEncoderStream();
+        encoder.readable.pipeTo(puerto.writable);
+        writer = encoder.writable.getWriter();
+
+        status.textContent = '✅ Conectado';
         status.classList.add('connected');
-      } catch (error) {
-        status.textContent = '❌ Error de conexión';
-        console.error(error);
+      } catch (err) {
+        status.textContent = '❌ Error al conectar';
+        console.error(err);
       }
     });
 
-    document.getElementById('center-btn').addEventListener('click', () => {
+    document.addEventListener('pointerlockchange', () => {
+      controlActivo = (document.pointerLockElement === document.body);
+    });
+
+    centerBtn.addEventListener('click', () => {
+      direccionActual = 0;
+      potenciaActual = 0;
+      potenciaSuavizada = 0;
       controlActivo = true;
+      document.body.requestPointerLock();
     });
 
-    function enviarComando() {
-      if (!characteristic) return;
-      const dir = Math.max(-45, Math.min(45, direccionActual));
-      const pot = Math.max(-90, Math.min(90, potenciaActual));
-      const comando = `${pot.toFixed(0)},${Math.round((dir + 45) * 2)}
-`;
-      const encoder = new TextEncoder();
-      characteristic.writeValue(encoder.encode(comando));
-
-      angleDisplay.textContent = dir;
-      speedDisplay.textContent = pot;
-    }
-
-    let touchStartX = 0, touchStartY = 0;
-    document.body.addEventListener('touchstart', (e) => {
+    document.addEventListener('mousemove', (event) => {
       if (!controlActivo) return;
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    });
 
-    document.body.addEventListener('touchend', (e) => {
-      if (!controlActivo) return;
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      const dy = e.changedTouches[0].clientY - touchStartY;
+      const deltaX = event.movementX;
+      const deltaY = event.movementY;
+      const movimientoReal = Math.abs(deltaX) + Math.abs(deltaY);
 
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 30) direccionActual += 5;
-        else if (dx < -30) direccionActual -= 5;
-      } else {
-        if (dy < -30) potenciaActual += 5;
-        else if (dy > 30) potenciaActual -= 5;
+      if (movimientoReal > UMBRAL_MOVIMIENTO) {
+        direccionActual += deltaX * SENSIBILIDAD_X;
+        direccionActual = Math.max(Math.min(direccionActual, LIMITE_GRADOS), -LIMITE_GRADOS);
+
+        if (Math.abs(deltaY) > 0.5) {
+          potenciaActual -= deltaY * SENSIBILIDAD_Y;
+          potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
+        }
+
+        ultimoMovimiento = Date.now();
       }
-
-      enviarComando();
     });
 
-    document.body.addEventListener('contextmenu', e => e.preventDefault());
-    document.body.addEventListener('dblclick', () => {
-      marchaActual = (marchaActual % 5) + 1;
+    document.addEventListener('mousedown', (event) => {
+      if (!controlActivo) return;
+
+      if (event.button === 0) {
+        marchaActual = Math.min(marchaActual + 1, 5);
+      } else if (event.button === 2) {
+        marchaActual = Math.max(marchaActual - 1, 1);
+      }
       marchaSpan.textContent = marchaActual;
       marchaSpan.className = `gear-indicator gear-${marchaActual}`;
     });
+
+    window.addEventListener("contextmenu", e => e.preventDefault());
+
+    function enviarComando(pot, dir) {
+      if (!writer) return;
+      const dirServo = Math.round((Math.max(Math.min(dir, LIMITE_GRADOS), -LIMITE_GRADOS) + 45) * 2);
+      const potVal = Math.round(Math.max(Math.min(pot, LIMITE_POTENCIA), -LIMITE_POTENCIA));
+      const comando = `${potVal},${dirServo}\r\n`;
+      writer.write(comando);
+
+      angleDisplay.textContent = dir.toFixed(1);
+      speedDisplay.textContent = pot.toFixed(1);
+
+      arrowLeft.classList.toggle('active', dir < -5);
+      arrowRight.classList.toggle('active', dir > 5);
+      arrowUp.classList.toggle('active', pot > 5);
+      arrowDown.classList.toggle('active', pot < -5);
+
+      const fill = Math.abs(pot) / LIMITE_POTENCIA;
+      gatilloFill.style.height = `${fill * 100}%`;
+    }
+
+    setInterval(() => {
+      if (!controlActivo || !writer) return;
+      const ahora = Date.now();
+      const tiempoSinMovimiento = ahora - ultimoMovimiento;
+
+      if (tiempoSinMovimiento > TIEMPO_RECALIBRAR) {
+        direccionActual = 0.0;
+        potenciaActual = 0.0;
+        potenciaSuavizada = 0.0;
+      } else {
+        const diferencia = Math.abs(potenciaActual - potenciaSuavizada);
+        if (diferencia < 1.5) {
+          potenciaSuavizada = potenciaActual;
+        } else {
+          const velocidadSuavizado = 0.15;
+          potenciaSuavizada += (potenciaActual - potenciaSuavizada) * velocidadSuavizado;
+        }
+      }
+
+      const factor = potenciaMaximaPorMarcha[marchaActual - 1];
+      const potenciaLimitada = potenciaSuavizada * factor;
+
+      enviarComando(potenciaLimitada, direccionActual);
+    }, REFRESCO);
   </script>
 </body>
 </html>
