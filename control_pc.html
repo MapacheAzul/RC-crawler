@@ -88,17 +88,15 @@
     let potenciaSuavizada = 0.0;
     let ultimoMovimiento = Date.now();
     let marchaActual = 1;
-
     const REFRESCO = 20;
     const LIMITE_GRADOS = 50;
     const LIMITE_POTENCIA = 90;
     const SENSIBILIDAD_X = 0.2;
     const SENSIBILIDAD_Y = 0.04;
     const velocidadSuavizado = 0.02;
-    const UMBRAL_MOVIMIENTO_UTIL = 1.2;
-    const UMBRAL_MIN_POTENCIA = 6;
+    const UMBRAL_MOVIMIENTO_UTIL = 0.6;
+    const UMBRAL_MIN_POTENCIA = 5;
     const TIEMPO_RECALIBRAR = 400;
-
     const potenciaMaximaPorMarcha = [0.30, 0.45, 0.65, 0.8, 1.0];
 
     const status = document.getElementById('status');
@@ -148,10 +146,12 @@
         direccionActual += deltaX * SENSIBILIDAD_X;
         direccionActual = Math.max(Math.min(direccionActual, LIMITE_GRADOS), -LIMITE_GRADOS);
       }
-      if (Math.abs(deltaY) > UMBRAL_MOVIMIENTO_UTIL) {
+      if (deltaY < -UMBRAL_MOVIMIENTO_UTIL) {
         potenciaActual -= deltaY * SENSIBILIDAD_Y;
-        potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
+      } else if (deltaY > UMBRAL_MOVIMIENTO_UTIL) {
+        potenciaActual -= deltaY * SENSIBILIDAD_Y;
       }
+      potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
       ultimoMovimiento = Date.now();
     });
 
@@ -171,10 +171,8 @@
       const potVal = Math.round(Math.max(Math.min(pot, LIMITE_POTENCIA), -LIMITE_POTENCIA));
       const comando = `${potVal},${dirServo}\r\n`;
       writer.write(comando);
-
-      // Visualización con compensación
+      
       const potVisual = pot.toFixed(1);
-
 
       angleDisplay.textContent = dir.toFixed(1);
       speedDisplay.textContent = potVisual.toFixed(1);
@@ -187,32 +185,35 @@
     }
 
     setInterval(() => {
-      if (!controlActivo || !writer) return;
-      const ahora = Date.now();
-      const tiempoSinMovimiento = ahora - ultimoMovimiento;
+  if (!controlActivo || !writer) return;
+  const ahora = Date.now();
+  const tiempoSinMovimiento = ahora - ultimoMovimiento;
 
-      if (tiempoSinMovimiento > TIEMPO_RECALIBRAR) {
-        direccionActual = 0.0;
-        potenciaActual = 0.0;
-        potenciaSuavizada = 0.0;
-      } else {
-        const diferencia = Math.abs(potenciaActual - potenciaSuavizada);
-        if (diferencia < 1.5) {
-          potenciaSuavizada = potenciaActual;
-        } else {
-          potenciaSuavizada += (potenciaActual - potenciaSuavizada) * velocidadSuavizado;
-        }
-      }
+  if (tiempoSinMovimiento > TIEMPO_RECALIBRAR) {
+    direccionActual = 0.0;
+    potenciaActual = 0.0;
+    potenciaSuavizada = 0.0;
+  } else {
+    const diferencia = Math.abs(potenciaActual - potenciaSuavizada);
+    if (diferencia < 1.5) {
+      potenciaSuavizada = potenciaActual;
+    } else {
+      potenciaSuavizada += (potenciaActual - potenciaSuavizada) * velocidadSuavizado;
+    }
+  }
 
-      const factor = potenciaMaximaPorMarcha[marchaActual - 1];
-      let potenciaBruta = potenciaSuavizada * factor;
+  const factor = potenciaMaximaPorMarcha[marchaActual - 1];
+  let potenciaBruta = potenciaSuavizada * factor;
 
-      if (potenciaBruta > 0 && potenciaBruta <= 30) {
-        potenciaBruta = UMBRAL_MIN_POTENCIA + ((potenciaBruta / 30) * (30 - UMBRAL_MIN_POTENCIA));
-      }
+  // Compensación para que tanto hacia delante como hacia atrás se active antes
+  if (Math.abs(potenciaBruta) <= 30 && potenciaBruta !== 0) {
+    const signo = Math.sign(potenciaBruta);
+    potenciaBruta = signo * (UMBRAL_MIN_POTENCIA + (Math.abs(potenciaBruta) / 30) * (30 - UMBRAL_MIN_POTENCIA));
+  }
 
-      enviarComando(potenciaBruta, direccionActual);
-    }, REFRESCO);
+  enviarComando(potenciaBruta, direccionActual);
+}, REFRESCO);
+
   </script>
 </body>
 </html>
