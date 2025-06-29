@@ -188,7 +188,7 @@
         direccionActual += deltaX * SENSIBILIDAD_X;
         direccionActual = Math.max(Math.min(direccionActual, LIMITE_GRADOS), -LIMITE_GRADOS);
         if (Math.abs(deltaY) > 0.5) {
-          potenciaActual -= deltaY * SENSIBILIDAD_Y;
+          potenciaActual += deltaY * SENSIBILIDAD_Y; // AHORA está corregido
           potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
         }
         ultimoMovimiento = Date.now();
@@ -215,8 +215,8 @@
       speedDisplay.textContent = pot.toFixed(1);
       arrowLeft.classList.toggle('active', dir < -5);
       arrowRight.classList.toggle('active', dir > 5);
-      arrowUp.classList.toggle('active', pot > 5);   // ⬆️ adelante
-      arrowDown.classList.toggle('active', pot < -5); // ⬇️ reversa
+      arrowUp.classList.toggle('active', pot < -5);  // ahora subir el ratón = potencia negativa = adelante
+      arrowDown.classList.toggle('active', pot > 5); // bajar = reversa
       const fill = Math.abs(pot) / LIMITE_POTENCIA;
       gatilloFill.style.height = `${fill * 100}%`;
     }
