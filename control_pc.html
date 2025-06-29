@@ -12,66 +12,38 @@
       padding-top: 50px;
       overflow: hidden;
     }
-    .status {
-      font-size: 1.5em;
-      margin-bottom: 10px;
-    }
-    .connected {
-      color: #00ffae;
-    }
+    .status { font-size: 1.5em; margin-bottom: 10px; }
+    .connected { color: #00ffae; }
     .angle-display, .gear-display {
-      font-size: 1.4em;
-      margin-bottom: 12px;
-      font-weight: 600;
+      font-size: 1.4em; margin-bottom: 12px; font-weight: 600;
     }
     .arrow-grid {
-      display: grid;
-      grid-template-columns: 80px 80px 80px;
-      grid-gap: 20px;
-      justify-content: center;
-      align-items: center;
+      display: grid; grid-template-columns: 80px 80px 80px;
+      grid-gap: 20px; justify-content: center; align-items: center;
       margin-top: 40px;
     }
     .arrow {
-      font-size: 2.2em;
-      background-color: rgba(255, 255, 255, 0.1);
-      border: 2px solid white;
-      border-radius: 14px;
-      padding: 12px;
-      cursor: pointer;
-      transition: background 0.25s, transform 0.25s, border 0.3s;
+      font-size: 2.2em; background-color: rgba(255,255,255,0.1);
+      border: 2px solid white; border-radius: 14px; padding: 12px;
+      cursor: pointer; transition: background 0.25s, transform 0.25s, border 0.3s;
       box-shadow: 0 4px 8px rgba(0,0,0,0.4);
     }
-    .arrow:hover {
-      background-color: rgba(255, 255, 255, 0.3);
-    }
+    .arrow:hover { background-color: rgba(255,255,255,0.3); }
     .arrow.active {
-      transform: scale(1.2);
-      border: 3px solid;
+      transform: scale(1.2); border: 3px solid;
       border-image: linear-gradient(45deg, #00f2fe, #4facfe) 1;
     }
     #connectBtn {
-      margin-top: 30px;
-      font-size: 1.3em;
-      padding: 12px 28px;
+      margin-top: 30px; font-size: 1.3em; padding: 12px 28px;
       background: linear-gradient(to right, #00ffae, #0077ff);
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      color: #003f5c;
-      font-weight: bold;
+      border: none; border-radius: 12px; cursor: pointer;
+      color: #003f5c; font-weight: bold;
       transition: transform 0.2s, box-shadow 0.2s;
     }
-    #connectBtn:hover {
-      transform: scale(1.05);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
+    #connectBtn:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
     .gear-indicator {
-      font-size: 1.5em;
-      font-weight: bold;
-      padding: 6px 16px;
-      display: inline-block;
-      border-radius: 10px;
+      font-size: 1.5em; font-weight: bold; padding: 6px 16px;
+      display: inline-block; border-radius: 10px;
       transition: background-color 0.3s;
     }
     .gear-1 { background-color: #00b894; }
@@ -80,23 +52,16 @@
     .gear-4 { background-color: #fdcb6e; }
     .gear-5 { background-color: #d63031; }
     #gatillo {
-      position: absolute;
-      right: 30px;
-      top: 50%;
+      position: absolute; right: 30px; top: 50%;
       transform: translateY(-50%);
-      width: 20px;
-      height: 300px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 2px solid white;
-      border-radius: 10px;
-      overflow: hidden;
+      width: 20px; height: 300px;
+      background: rgba(255,255,255,0.1);
+      border: 2px solid white; border-radius: 10px; overflow: hidden;
     }
     #gatillo-fill {
-      width: 100%;
-      height: 50%;
+      width: 100%; height: 50%;
       background: linear-gradient(to top, #00ffae, #0077ff);
-      transform-origin: bottom;
-      transition: height 0.1s ease-out;
+      transform-origin: bottom; transition: height 0.1s ease-out;
     }
   </style>
 </head>
@@ -107,22 +72,15 @@
   </div>
   <div class="angle-display">Ángulo de dirección: <span id="angulo">0.0</span>°</div>
   <div class="angle-display">Potencia: <span id="velocidad">0</span></div>
-
   <div class="arrow-grid">
-    <div></div>
-    <div class="arrow" id="arrow-up">⬆️</div> <!-- ADELANTE -->
-    <div></div>
+    <div></div><div class="arrow" id="arrow-up">⬆️</div><div></div>
     <div class="arrow" id="arrow-left">⬅️</div>
     <div class="arrow" id="center-btn">🎯</div>
     <div class="arrow" id="arrow-right">➡️</div>
-    <div></div>
-    <div class="arrow" id="arrow-down">⬇️</div> <!-- REVERSA -->
-    <div></div>
+    <div></div><div class="arrow" id="arrow-down">🔽️</div><div></div>
   </div>
-
   <button id="connectBtn">Conectar por Bluetooth</button>
   <div id="gatillo"><div id="gatillo-fill"></div></div>
-
   <script>
     let puerto, writer;
     let direccionActual = 0.0;
@@ -130,23 +88,26 @@
     let potenciaSuavizada = 0.0;
     let ultimoMovimiento = Date.now();
     let marchaActual = 1;
-    const potenciaMaximaPorMarcha = [0.25, 0.35, 0.6, 0.75, 1.0];
-    const marchaSpan = document.getElementById('marcha');
+
     const REFRESCO = 20;
-    const SENSIBILIDAD_X = 0.4;
-    const SENSIBILIDAD_Y = 0.1;
-    const LIMITE_GRADOS = 45;
+    const LIMITE_GRADOS = 50;
     const LIMITE_POTENCIA = 90;
+    const SENSIBILIDAD_X = 0.2;
+    const SENSIBILIDAD_Y = 0.04;
+    const velocidadSuavizado = 0.02;
+    const UMBRAL_MOVIMIENTO_UTIL = 1.2;
+    const UMBRAL_MIN_POTENCIA = 6;
     const TIEMPO_RECALIBRAR = 400;
-    const UMBRAL_MOVIMIENTO = 0.3;
-    let controlActivo = false;
+
+    const potenciaMaximaPorMarcha = [0.30, 0.45, 0.65, 0.8, 1.0];
 
     const status = document.getElementById('status');
     const angleDisplay = document.getElementById('angulo');
     const speedDisplay = document.getElementById('velocidad');
-    const gatilloFill = document.getElementById('gatillo-fill');
+    const marchaSpan = document.getElementById('marcha');
     const connectBtn = document.getElementById('connectBtn');
     const centerBtn = document.getElementById('center-btn');
+    const gatilloFill = document.getElementById('gatillo-fill');
     const arrowLeft = document.getElementById('arrow-left');
     const arrowRight = document.getElementById('arrow-right');
     const arrowUp = document.getElementById('arrow-up');
@@ -183,16 +144,15 @@
       if (!controlActivo) return;
       const deltaX = event.movementX;
       const deltaY = event.movementY;
-      const movimientoReal = Math.abs(deltaX) + Math.abs(deltaY);
-      if (movimientoReal > UMBRAL_MOVIMIENTO) {
+      if (Math.abs(deltaX) > 0.1) {
         direccionActual += deltaX * SENSIBILIDAD_X;
         direccionActual = Math.max(Math.min(direccionActual, LIMITE_GRADOS), -LIMITE_GRADOS);
-        if (Math.abs(deltaY) > 0.5) {
-          potenciaActual += deltaY * SENSIBILIDAD_Y; // AHORA está corregido
-          potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
-        }
-        ultimoMovimiento = Date.now();
       }
+      if (Math.abs(deltaY) > UMBRAL_MOVIMIENTO_UTIL) {
+        potenciaActual -= deltaY * SENSIBILIDAD_Y;
+        potenciaActual = Math.max(Math.min(potenciaActual, LIMITE_POTENCIA), -LIMITE_POTENCIA);
+      }
+      ultimoMovimiento = Date.now();
     });
 
     document.addEventListener('mousedown', (event) => {
@@ -207,16 +167,21 @@
 
     function enviarComando(pot, dir) {
       if (!writer) return;
-      const dirServo = Math.round((Math.max(Math.min(dir, LIMITE_GRADOS), -LIMITE_GRADOS) + 45) * 2);
+      const dirServo = Math.round((Math.max(Math.min(dir, LIMITE_GRADOS), -LIMITE_GRADOS) + 50) * 2);
       const potVal = Math.round(Math.max(Math.min(pot, LIMITE_POTENCIA), -LIMITE_POTENCIA));
       const comando = `${potVal},${dirServo}\r\n`;
       writer.write(comando);
+
+      // Visualización con compensación
+      const potVisual = Math.abs(pot) < UMBRAL_MIN_POTENCIA ? 0 :
+                        (pot > 0 ? pot - UMBRAL_MIN_POTENCIA : pot + UMBRAL_MIN_POTENCIA);
+
       angleDisplay.textContent = dir.toFixed(1);
-      speedDisplay.textContent = pot.toFixed(1);
+      speedDisplay.textContent = potVisual.toFixed(1);
       arrowLeft.classList.toggle('active', dir < -5);
       arrowRight.classList.toggle('active', dir > 5);
-      arrowUp.classList.toggle('active', pot < -5);  // ahora subir el ratón = potencia negativa = adelante
-      arrowDown.classList.toggle('active', pot > 5); // bajar = reversa
+      arrowUp.classList.toggle('active', pot > 5);
+      arrowDown.classList.toggle('active', pot < -5);
       const fill = Math.abs(pot) / LIMITE_POTENCIA;
       gatilloFill.style.height = `${fill * 100}%`;
     }
@@ -225,6 +190,7 @@
       if (!controlActivo || !writer) return;
       const ahora = Date.now();
       const tiempoSinMovimiento = ahora - ultimoMovimiento;
+
       if (tiempoSinMovimiento > TIEMPO_RECALIBRAR) {
         direccionActual = 0.0;
         potenciaActual = 0.0;
@@ -234,15 +200,18 @@
         if (diferencia < 1.5) {
           potenciaSuavizada = potenciaActual;
         } else {
-          const velocidadSuavizado = 0.15;
           potenciaSuavizada += (potenciaActual - potenciaSuavizada) * velocidadSuavizado;
         }
       }
 
       const factor = potenciaMaximaPorMarcha[marchaActual - 1];
-      const potenciaLimitada = Math.sign(potenciaSuavizada) * Math.min(Math.abs(potenciaSuavizada), LIMITE_POTENCIA * factor);
+      let potenciaBruta = potenciaSuavizada * factor;
 
-      enviarComando(potenciaLimitada, direccionActual);
+      if (potenciaBruta > 0 && potenciaBruta <= 30) {
+        potenciaBruta = UMBRAL_MIN_POTENCIA + ((potenciaBruta / 30) * (30 - UMBRAL_MIN_POTENCIA));
+      }
+
+      enviarComando(potenciaBruta, direccionActual);
     }, REFRESCO);
   </script>
 </body>
