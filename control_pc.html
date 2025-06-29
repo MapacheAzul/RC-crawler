@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -111,13 +110,13 @@
 
   <div class="arrow-grid">
     <div></div>
-    <div class="arrow" id="arrow-up">⬆️</div>
+    <div class="arrow" id="arrow-up">⬆️</div> <!-- ADELANTE -->
     <div></div>
     <div class="arrow" id="arrow-left">⬅️</div>
     <div class="arrow" id="center-btn">🎯</div>
     <div class="arrow" id="arrow-right">➡️</div>
     <div></div>
-    <div class="arrow" id="arrow-down">🔽️</div>
+    <div class="arrow" id="arrow-down">⬇️</div> <!-- REVERSA -->
     <div></div>
   </div>
 
@@ -210,15 +209,14 @@
       if (!writer) return;
       const dirServo = Math.round((Math.max(Math.min(dir, LIMITE_GRADOS), -LIMITE_GRADOS) + 45) * 2);
       const potVal = Math.round(Math.max(Math.min(pot, LIMITE_POTENCIA), -LIMITE_POTENCIA));
-      const comando = `${potVal},${dirServo}
-`;
+      const comando = `${potVal},${dirServo}\r\n`;
       writer.write(comando);
       angleDisplay.textContent = dir.toFixed(1);
       speedDisplay.textContent = pot.toFixed(1);
       arrowLeft.classList.toggle('active', dir < -5);
       arrowRight.classList.toggle('active', dir > 5);
-      arrowUp.classList.toggle('active', pot > 5);
-      arrowDown.classList.toggle('active', pot < -5);
+      arrowUp.classList.toggle('active', pot > 5);   // ⬆️ adelante
+      arrowDown.classList.toggle('active', pot < -5); // ⬇️ reversa
       const fill = Math.abs(pot) / LIMITE_POTENCIA;
       gatilloFill.style.height = `${fill * 100}%`;
     }
@@ -240,8 +238,10 @@
           potenciaSuavizada += (potenciaActual - potenciaSuavizada) * velocidadSuavizado;
         }
       }
+
       const factor = potenciaMaximaPorMarcha[marchaActual - 1];
-      const potenciaLimitada = potenciaSuavizada * factor;
+      const potenciaLimitada = Math.sign(potenciaSuavizada) * Math.min(Math.abs(potenciaSuavizada), LIMITE_POTENCIA * factor);
+
       enviarComando(potenciaLimitada, direccionActual);
     }, REFRESCO);
   </script>
