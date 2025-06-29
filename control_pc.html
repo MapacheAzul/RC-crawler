@@ -173,8 +173,8 @@
       writer.write(comando);
 
       // Visualización con compensación
-      const potVisual = Math.abs(pot) < UMBRAL_MIN_POTENCIA ? 0 :
-                        (pot > 0 ? pot - UMBRAL_MIN_POTENCIA : pot + UMBRAL_MIN_POTENCIA);
+      const potVisual = pot.toFixed(1);
+
 
       angleDisplay.textContent = dir.toFixed(1);
       speedDisplay.textContent = potVisual.toFixed(1);
